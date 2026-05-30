@@ -106,22 +106,22 @@ jobs:
       - name: Se connecter à Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build et Push image Eureka
         uses: docker/build-push-action@v5
         with:
           context: ./eureka-server
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/transport-eureka:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/transport-eureka:latest
 
       - name: Build et Push image Gateway
         uses: docker/build-push-action@v5
         with:
           context: ./api-gateway
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/transport-gateway:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/transport-gateway:latest
 
   # ════════════════════════════════════════════════
   # JOB 4 : Notification résultat (optionnel)
