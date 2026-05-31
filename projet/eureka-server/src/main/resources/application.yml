@@ -1,0 +1,37 @@
+server:
+  port: 8761  # Port standard d'Eureka — ne pas changer
+
+spring:
+  application:
+    name: eureka-server  # Nom du service dans le registre
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # Eureka ne doit PAS s'enregistrer lui-même
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  server:
+    # Délai d'attente réduit pour le développement
+    wait-time-in-ms-when-sync-empty: 0
+    # Désactiver l'auto-protection en développement
+    enable-self-preservation: false
+
+# Activer les endpoints de santé
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: always
+
+# Message d'information
+info:
+  app:
+    name: "Eureka Server - Transport Urbain Cameroun"
+    version: "1.0.0"

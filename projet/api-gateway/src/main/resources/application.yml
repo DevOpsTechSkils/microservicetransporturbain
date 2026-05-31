@@ -1,0 +1,76 @@
+server:
+  port: 8080  # Point d'entrée unique de l'application
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      # Routes vers chaque microservice
+      routes:
+        # ─── Route vers service-client ────────────────────────────────
+        - id: service-client
+          # lb:// = load balancer via Eureka (jamais d'URL en dur !)
+          uri: lb://SERVICE-CLIENT
+          predicates:
+            - Path=/api/clients/**
+          filters:
+            - StripPrefix=0
+
+        # ─── Route vers service-reservation ──────────────────────────
+        - id: service-reservation
+          uri: lb://SERVICE-RESERVATION
+          predicates:
+            - Path=/api/reservations/**
+          filters:
+            - StripPrefix=0
+
+        # ─── Route vers service-paiement ──────────────────────────────
+        - id: service-paiement
+          uri: lb://SERVICE-PAIEMENT
+          predicates:
+            - Path=/api/paiements/**
+          filters:
+            - StripPrefix=0
+
+      # Configuration CORS globale (autorise Angular à appeler l'API)
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:4200"   # Angular en développement
+              - "http://localhost:80"     # Angular en production Docker
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+# Connexion à Eureka
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# Clé secrète JWT — DOIT être identique dans tous les services
+jwt:
+  secret: "transport-urbain-cameroun-secret-key-2026-douala-very-long"
+
+# Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
+  endpoint:
+    gateway:
+      enabled: true
+    health:
+      show-details: always

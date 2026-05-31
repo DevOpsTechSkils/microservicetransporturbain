@@ -1,0 +1,41 @@
+# ─── Maven ────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ─── IntelliJ IDEA ───────────────────────────────────────────────
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# ─── VS Code ─────────────────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+# ─── Clés SSH et secrets (NE JAMAIS COMMITTER) ───────────────────
+*.pem
+*.key
+id_rsa
+id_ed25519
+id_ed25519.pub
+id_rsa.pub
+patrick
+patrick.pub
+
+# ─── Fichiers d'environnement ────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── OS ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+
+# ─── Docker ──────────────────────────────────────────────────────
+docker-compose.override.yml
