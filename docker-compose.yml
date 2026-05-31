@@ -1,0 +1,166 @@
+version: '3.8'
+
+# ─── Réseau interne partagé entre tous les services ───────────────────────────
+networks:
+  transport-net:
+    driver: bridge
+
+# ─── Volumes pour persister les données des bases ─────────────────────────────
+volumes:
+  db-client-data:
+  db-reservation-data:
+  db-paiement-data:
+
+services:
+
+  # ══════════════════════════════════════════════
+  # INFRASTRUCTURE (TON PÉRIMÈTRE - DEV 1)
+  # ══════════════════════════════════════════════
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - transport-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1",
+             "--spider", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka-server:
+        condition: service_healthy  # Attend qu'Eureka soit sain
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=transport-urbain-cameroun-secret-key-2026-douala-very-long
+    networks:
+      - transport-net
+
+  # ══════════════════════════════════════════════
+  # BASES DE DONNÉES (DEV 4 les configure,
+  # mais tu en as besoin pour les tests d'intégration)
+  # ══════════════════════════════════════════════
+
+  db-client:
+    image: postgres:15-alpine
+    container_name: db-client
+    environment:
+      POSTGRES_DB: clientdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    volumes:
+      - db-client-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - transport-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d clientdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-reservation:
+    image: postgres:15-alpine
+    container_name: db-reservation
+    environment:
+      POSTGRES_DB: reservationdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    volumes:
+      - db-reservation-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - transport-net
+
+  db-paiement:
+    image: postgres:15-alpine
+    container_name: db-paiement
+    environment:
+      POSTGRES_DB: paiementdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    volumes:
+      - db-paiement-data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    networks:
+      - transport-net
+
+  # ══════════════════════════════════════════════
+  # MICROSERVICES MÉTIER
+  # (seront construits par Dev 2, 3, 4)
+  # ══════════════════════════════════════════════
+
+  service-client:
+    build: ./service-client
+    container_name: service-client
+    depends_on:
+      db-client:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db-client:5432/clientdb
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin123
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=transport-urbain-cameroun-secret-key-2026-douala-very-long
+    networks:
+      - transport-net
+
+  service-reservation:
+    build: ./service-reservation
+    container_name: service-reservation
+    depends_on:
+      db-reservation:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db-reservation:5432/reservationdb
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin123
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - transport-net
+
+  service-paiement:
+    build: ./service-paiement
+    container_name: service-paiement
+    depends_on:
+      db-paiement:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db-paiement:5432/paiementdb
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin123
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    networks:
+      - transport-net
+
+  # ══════════════════════════════════════════════
+  # FRONTEND ANGULAR
+  # ══════════════════════════════════════════════
+
+  frontend:
+    build: ./frontend-angular
+    container_name: frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - transport-net
