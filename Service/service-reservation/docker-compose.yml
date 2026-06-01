@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  reservation-db:
+    image: mysql:8.0
+    container_name: reservation-db
+    environment:
+      MYSQL_DATABASE: reservation_db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - reservation_data:/var/lib/mysql
+    networks:
+      - transport-network
+
+  service-reservation:
+    build: .
+    container_name: service-reservation
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://reservation-db:3306/reservation_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      - reservation-db
+    networks:
+      - transport-network
+
+volumes:
+  reservation_data:
+
+networks:
+  transport-network:
+    external: true
