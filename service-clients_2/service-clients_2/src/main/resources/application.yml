@@ -1,0 +1,169 @@
+# ══════════════════════════════════════════════════════════════════
+# application.yml — Configuration complète du service-clients
+#
+# YAML (Yet Another Markup Language) = format de configuration lisible
+# Les ESPACES et INDENTATIONS sont critiques en YAML !
+# Deux espaces par niveau d'indentation (pas de tabulations)
+# ══════════════════════════════════════════════════════════════════
+
+# ─── SERVEUR ───────────────────────────────────────────────────────
+server:
+  port: 8081                    # Port d'écoute du service
+  #servlet:
+    #context-path: /             # Chemin de base (/ = pas de préfixe)
+
+# ─── APPLICATION ───────────────────────────────────────────────────
+spring:
+  application:
+    name: service-clients_2       # Nom dans l'annuaire Eureka (IMPORTANT !)
+    # Les autres services utilisent ce nom pour nous appeler
+
+  # ─── BASE DE DONNÉES H2 ──────────────────────────────────────────
+  datasource:
+    # jdbc:h2:mem:clientsdb = URL de connexion à H2 en mémoire
+    # mem: = en mémoire (les données disparaissent à l'arrêt)
+    # clientsdb = nom de la base de données
+    url: jdbc:mysql://localhost:3306/db-client?useSSL=false&serverTimezone=UTC #jdbc:h2:mem:clientsdb
+    driver-class-name: com.mysql.cj.jdbc.Driver #org.h2.Driver
+    username: root #sa                # Identifiant H2 par défaut
+    password:                   # Pas de mot de passe pour H2 (développement)
+    hikari:
+      # HikariCP = pool de connexions (gestion des connexions BDD)
+      maximum-pool-size: 10     # Maximum 10 connexions simultanées
+      connection-timeout: 20000 # Timeout de connexion : 20 secondes
+
+  # ─── JPA / HIBERNATE ─────────────────────────────────────────────
+  jpa:
+    # Dialecte SQL : adapte les requêtes SQL au moteur de BDD utilisé
+    #database-platform: org.hibernate.dialect.H2Dialect
+
+    hibernate:
+      # ddl-auto contrôle la création des tables :
+      # create-drop = crée les tables au démarrage, les supprime à l'arrêt
+      # validate    = vérifie que les tables correspondent aux entités (production)
+      # update      = met à jour les tables sans supprimer les données
+      ddl-auto: update
+
+    # Affiche le SQL généré par Hibernate dans les logs (utile pour déboguer)
+    show-sql: true
+    properties:
+      hibernate:
+        # Formate le SQL affiché pour une meilleure lisibilité
+        format_sql: true
+        # Statistiques Hibernate (désactiver en production)
+        generate_statistics: false
+
+  # ─── CONSOLE H2 ──────────────────────────────────────────────────
+  # Interface web pour consulter la base de données directement
+  # Accès : http://localhost:8081/h2-console
+  #h2:
+   # console:
+    #  enabled: true             # Active la console web
+     # path: /h2-console         # URL de la console
+      #settings:
+       # trace: false            # Désactive les traces SQL dans la console
+        #web-allow-others: false # Sécurité : interdit l'accès depuis d'autres machines
+
+  # ─── JACKSON (sérialisation JSON) ────────────────────────────────
+ # jackson:
+    # Format des dates dans les réponses JSON
+  #  serialization:
+   #   WRITE_DATES_AS_TIMESTAMPS: false
+
+    # Ignore les champs null dans les réponses JSON
+   # default-property-inclusion: non_null
+
+# ─── SÉCURITÉ JWT ──────────────────────────────────────────────────
+# Configuration personnalisée pour JSON Web Token
+# Ces valeurs sont lues dans notre classe JwtService
+application:
+  security:
+    jwt:
+      # Clé secrète pour signer et vérifier les tokens JWT
+      # IMPORTANT : En production, mettre une clé longue et aléatoire
+      # et la stocker dans une variable d'environnement, JAMAIS ici
+      # Minimum recommandé : 256 bits (32 caractères)
+      secret-key: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"
+      # Durée de validité du token d'accès : 24h en millisecondes
+      # 86400000 = 24 * 60 * 60 * 1000
+      expiration: 86400000
+      # Durée du refresh token : 7 jours
+      # 604800000 = 7 * 24 * 60 * 60 * 1000
+      refresh-token:
+        expiration: 604800000
+
+# ─── EUREKA CLIENT ─────────────────────────────────────────────────
+eureka:
+  client:
+    # URL du serveur Eureka où s'enregistrer
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    # Récupère la liste des autres services (pour les appels inter-services)
+    fetch-registry: true
+    # S'enregistre dans Eureka au démarrage
+    register-with-eureka: true
+  instance:
+    # Utilise l'adresse IP plutôt que le nom d'hôte
+    # Évite les problèmes DNS dans certains environnements
+    prefer-ip-address: true
+    # Fréquence des "heartbeats" (signaux de vie) vers Eureka
+    lease-renewal-interval-in-seconds: 30
+
+# ─── SWAGGER / OPENAPI ─────────────────────────────────────────────
+# Configuration de la documentation API générée automatiquement
+springdoc:
+  api-docs:
+    path: /v3/api-docs           # URL du JSON OpenAPI (machine-readable)
+  swagger-ui:
+    path: /swagger-ui.html       # URL de l'interface Swagger UI (humain)
+    # Désactive la pré-autorisation automatique dans Swagger
+    # (on doit cliquer "Authorize" manuellement avec le token JWT)
+    disable-swagger-default-url: true
+    # Trie les endpoints par méthode HTTP (GET, POST, PUT, DELETE)
+    operations-sorter: method
+    # Affiche les tags dans l'ordre alphabétique
+    tags-sorter: alpha
+  # Affiche uniquement les packages de notre code (pas Spring interne)
+  packages-to-scan: cm.transport.service_clients_2
+
+# ─── ACTUATOR ──────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        # Endpoints exposés publiquement :
+        # health = état de santé (utilisé par Eureka et Docker healthcheck)
+        # info   = informations sur l'application
+        # metrics = métriques de performance
+        include: health,info,metrics
+  endpoint:
+    health:
+      # Affiche les détails de santé (BDD, mémoire, etc.)
+      show-details: when-authorized
+
+# ─── INFORMATIONS APPLICATION (affichées dans /actuator/info) ─────
+info:
+  app:
+    name: "Service Clients — Transport Interurbain Cameroun"
+    version: "1.0.0"
+    developer: "Dev2"
+    description: "Microservice de gestion des clients voyageurs"
+    endpoints:
+      auth: "/api/auth/**"
+      clients: "/api/clients/**"
+      swagger: "/swagger-ui.html"
+
+# ─── LOGS ──────────────────────────────────────────────────────────
+logging:
+  level:
+    # Notre code → niveau DEBUG (tout afficher)
+    cm.transport: DEBUG
+    # Spring Security → niveau DEBUG en dev (pour voir les filtres)
+    org.springframework.security: DEBUG
+    # Hibernate SQL → niveau DEBUG (affiche les requêtes SQL)
+    org.hibernate.SQL: DEBUG
+    # Valeurs des paramètres SQL → TRACE (affiche les valeurs réelles)
+    org.hibernate.orm.jdbc.bind: TRACE
+  pattern:
+    # Format des logs : timestamp [niveau] [nom thread] logger - message
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%level] [%thread] %logger{36} - %msg%n"
